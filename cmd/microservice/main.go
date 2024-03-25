@@ -5,8 +5,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
 	"time"
 
+	web "github.com/lucasferreirajs/lab-observabilidade/internal"
+	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -62,6 +68,65 @@ func initProvider(serviceName, collectorUrl string) (func(context.Context) error
 	return traceExporter.Shutdown, nil
 }
 
-func main() {
+// load env
+func init() {
 
+	viper.AutomaticEnv()
+
+}
+
+func main() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	shutdown, err := initProvider(viper.GetString("OTEL_SERVICE_NAME"), viper.GetString("OTEL_EXPORTER_OTLP_ENDPOINT"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer func() {
+		err = shutdown(ctx)
+		if err != nil {
+			log.Fatal("failed to shutdown tracerprovider: %w", err)
+		}
+	}()
+
+	tracer := otel.Tracer("microservices-tracer")
+	templateData := &web.TemplateData{
+		Title:              viper.GetString("TITLE"),
+		BackgroundColor:    viper.GetString("BACKGROUND_COLOR"),
+		ResponseTime:       time.Duration(viper.GetInt("RESPONSE_TIME")),
+		ExternalCallURL:    viper.GetString("EXTERNAL_CALL_URL"),
+		ExternalCallMethod: viper.GetString("EXTERNAL_CALL_METHOD"),
+		RequestNameOTEL:    viper.GetString("REQUEST_NAME_OTEL"),
+		OTELTracer:         tracer,
+	}
+
+	server := web.NewServer(templateData)
+	router := server.CreateServer()
+
+	go func() {
+		log.Println("Starting server on port: ", viper.GetString("HTTP_PORT"))
+		err := http.ListenAndServe(viper.GetString("HTTP_PORT"), router)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+	}()
+
+	select {
+	case <-sigCh:
+		log.Println("Shutting down gracefully,CTRL+C pressed...")
+	case <-ctx.Done():
+
+		log.Println("Shutting down due to other reason...")
+	}
+
+	// create time out
+
+	_, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
 }
