@@ -11,7 +11,8 @@ import (
 	"os/signal"
 	"time"
 
-	web "github.com/lucasferreirajs/lab-observabilidade/internal"
+	"lab-observabilidade/internal"
+
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -36,8 +37,12 @@ func initProvider(serviceName, collectorUrl string) (func(context.Context) error
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
+
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
+
+	fmt.Println(ctx)
+	fmt.Println(collectorUrl)
 
 	conn, err := grpc.DialContext(ctx, collectorUrl,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -45,6 +50,7 @@ func initProvider(serviceName, collectorUrl string) (func(context.Context) error
 	)
 
 	if err != nil {
+
 		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
 	}
 
@@ -72,7 +78,18 @@ func initProvider(serviceName, collectorUrl string) (func(context.Context) error
 func init() {
 
 	viper.AutomaticEnv()
+	viper.SetDefault("TITLE", "Microservice Demo 2")
+	viper.SetDefault("CONTENT", "this is a demo of microservice")
+	viper.SetDefault("BACKGROUND_COLOR", "blue")
+	viper.SetDefault("RESPONSE_TIME", "2000")
+	viper.SetDefault("EXTERNAL_CALL_URL", "http://goapp3:8282")
+	viper.SetDefault("EXTERNAL_CALL_METHOD", "GET")
+	viper.SetDefault("REQUEST_NAME_OTEL", "microservice-demo2-request")
+	viper.SetDefault("OTEL_SERVICE_NAME", "microservice-demo2")
+	viper.SetDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "otel-collector:4317")
+	viper.SetDefault("HTTP_PORT", ":8181")
 
+	fmt.Println("viper config:", viper.GetString("OTEL_SERVICE_NAME"))
 }
 
 func main() {
@@ -95,7 +112,7 @@ func main() {
 	}()
 
 	tracer := otel.Tracer("microservices-tracer")
-	templateData := &web.TemplateData{
+	templateData := &internal.TemplateData{
 		Title:              viper.GetString("TITLE"),
 		BackgroundColor:    viper.GetString("BACKGROUND_COLOR"),
 		ResponseTime:       time.Duration(viper.GetInt("RESPONSE_TIME")),
@@ -105,7 +122,7 @@ func main() {
 		OTELTracer:         tracer,
 	}
 
-	server := web.NewServer(templateData)
+	server := internal.NewServer(templateData)
 	router := server.CreateServer()
 
 	go func() {

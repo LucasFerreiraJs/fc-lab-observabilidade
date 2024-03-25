@@ -1,4 +1,4 @@
-module github.com/lucasferreirajs/lab-observabilidade
+module lab-observabilidade
 
 go 1.21.5
 
