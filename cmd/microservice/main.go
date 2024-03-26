@@ -11,7 +11,7 @@ import (
 	"os/signal"
 	"time"
 
-	"lab-observabilidade/internal"
+	internal "lab-observabilidade/internal/web"
 
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"

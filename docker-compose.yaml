@@ -43,7 +43,6 @@ services:
     container_name: goapp
     build:
       context: .
-      dockerfile: Dockerfile
     environment:
       - TITLE=Microservice Demo
       - CONTENT=this is a demo of microservice
@@ -66,7 +65,6 @@ services:
     container_name: goapp2
     build:
       context: .
-      dockerfile: Dockerfile
     environment:
       - TITLE=Microservice Demo 2
       - CONTENT=this is a demo of microservice
@@ -85,11 +83,10 @@ services:
       - prometheus
       - otel-collector
 
-  goapp2:
+  goapp3:
     container_name: goapp3
     build:
       context: .
-      dockerfile: Dockerfile
     environment:
       - TITLE=Microservice Demo 3
       - CONTENT=this is a demo of microservice

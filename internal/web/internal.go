@@ -16,7 +16,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-//go:embed web/template*
+//go:embed template/*
 var templateContent embed.FS
 
 type WebServer struct {
